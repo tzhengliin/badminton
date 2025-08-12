@@ -145,9 +145,22 @@
         document.querySelectorAll("tr.timeslot").forEach(recalcRow);
       }
 
+      // document.querySelectorAll("tr.timeslot").forEach((tr) => {
+      //   tr.querySelector(".price-input").addEventListener("input", () => recalcRow(tr));
+      //   tr.querySelector(".people-input").addEventListener("input", () => recalcRow(tr));
+      // });
       document.querySelectorAll("tr.timeslot").forEach((tr) => {
         tr.querySelector(".price-input").addEventListener("input", () => recalcRow(tr));
-        tr.querySelector(".people-input").addEventListener("input", () => recalcRow(tr));
+
+        tr.querySelector(".people-input").addEventListener("change", () => {
+          // ← 新增 change 事件
+          recalcRow(tr);
+          bridgeFillPeople(); // ← 關鍵：嘗試橋接填值
+        });
+
+        // 若你想在即時輸入就補值，也可加上 input 事件（選用）
+        // tr.querySelector(".people-input")
+        //   .addEventListener("input", () => { recalcRow(tr); bridgeFillPeople(); });
       });
 
       document.getElementById("resetPricesBtn").addEventListener("click", () => {
@@ -163,6 +176,49 @@
       });
 
       recalcAll();
+
+      // 判斷人數欄是否視為「空」
+      function isEmptyPeopleInput(input) {
+        const v = Number(input.value);
+        return input.value === "" || isNaN(v) || v <= 0;
+      }
+
+      // 橋接填值：若左右端點人數一致，且中間空白→幫忙補上
+      function bridgeFillPeople() {
+        const rows = Array.from(document.querySelectorAll("tr.timeslot"));
+        const peopleInputs = rows.map((r) => r.querySelector(".people-input"));
+        const n = peopleInputs.length;
+
+        let i = 0;
+        while (i < n) {
+          // 找左端點（第一個非空）
+          while (i < n && isEmptyPeopleInput(peopleInputs[i])) i++;
+          if (i >= n - 1) break;
+
+          // 往右找下一個非空作為右端點
+          let j = i + 1;
+          while (j < n && isEmptyPeopleInput(peopleInputs[j])) j++;
+          if (j >= n) break;
+
+          const leftVal = Number(peopleInputs[i].value);
+          const rightVal = Number(peopleInputs[j].value);
+
+          // 左右端點相等 → 填滿中間空白
+          if (leftVal > 0 && leftVal === rightVal) {
+            for (let k = i + 1; k < j; k++) {
+              if (isEmptyPeopleInput(peopleInputs[k])) {
+                peopleInputs[k].value = leftVal;
+                // 只重算被填到的那幾列，效能更好
+                const tr = rows[k];
+                if (typeof recalcRow === "function") recalcRow(tr);
+              }
+            }
+          }
+
+          // 往後續端點繼續掃描
+          i = j;
+        }
+      }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
